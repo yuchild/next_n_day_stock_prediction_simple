@@ -55,6 +55,18 @@ def data(stock, start_date, days_ahead):
     
     # *adjusted close % change from previous day, *adjusted not available as of 2021-07-10
     stock_df['adj'] = stock_df['Close'].pct_change()
+
+    # 8 day standard deviation of close % change from previous day 
+    stock_df['8stdev_adj'] = stock_df.adj.rolling(8).std()
+    
+    # 8 day rolling average of close % change from pervious day
+    stock_df['8sma_adj'] = stock_df.adj.rolling(8).mean()
+    
+    # 13 day standard deviation of close % change from previous day 
+    stock_df['13stdev_adj'] = stock_df.adj.rolling(13).std()
+    
+    # 13 day rolling average of close % change from pervious day
+    stock_df['13sma_adj'] = stock_df.adj.rolling(13).mean()
     
     # 21 day standard deviation of close % change from previous day 
     stock_df['21stdev_adj'] = stock_df.adj.rolling(21).std()
@@ -91,6 +103,10 @@ def data(stock, start_date, days_ahead):
     # features
     features = ['oc'
                , 'hl'
+               , '8stdev_adj'
+               , '8sma_adj'
+               , '13stdev_adj'
+               , '13sma_adj'
                , '21stdev_adj'
                , '21sma_adj'
               ]
@@ -102,7 +118,10 @@ def data(stock, start_date, days_ahead):
     X_test = test[features]
     y_test = test['direction']
     
-    return X_train, X_test, y_train, y_test, stock_df
+    # Current Price
+    current_price = stock_df['Close'].iloc[-1]
+    
+    return X_train, X_test, y_train, y_test, stock_df, current_price
 
 
 def rfc_GridSearch(X_train, y_train, stock_name, days_ahead, cv):
@@ -115,11 +134,11 @@ def rfc_GridSearch(X_train, y_train, stock_name, days_ahead, cv):
     
     # make grid of hyperparameters
     grid={'bootstrap': [True, False]
-           , 'n_estimators': [5, 25, 45, 65, 85, 105]
-           , 'max_depth': [1, 2, 3, 4]
-           , 'max_features': [1, 2, 3, 4]
-           , 'min_samples_leaf': [1, 2, 3, 4]
-           , 'min_samples_split': [1, 2, 3]
+           , 'n_estimators': [5, 21, 35, 55, 89]
+           , 'max_depth': [2, 4, 6]
+           , 'max_features': [2, 4, 6]
+           , 'min_samples_leaf': [2, 4, 6]
+           , 'min_samples_split': [1, 3, 5]
           }
     
     # gridsearch with 5 fold cross validation
@@ -133,7 +152,7 @@ def rfc_GridSearch(X_train, y_train, stock_name, days_ahead, cv):
     
     # save best hyperparameters
     joblib.dump(rfc_gridsearch.best_params_
-                , f'./models/{stock_name}{days_ahead}.pkl'
+                , f'./pickles/{stock_name}{days_ahead}.pkl'
                 , compress = 1
                )
 
@@ -147,7 +166,7 @@ def rfc(X_train, X_test, y_train, stock_name, days_ahead):
     # load best parameters
     rfc = RandomForestClassifier(random_state = 42
                                  , n_jobs = -1
-                                ).set_params(**joblib.load(f'./models/{stock_name}{days_ahead}.pkl'))
+                                ).set_params(**joblib.load(f'./pickles/{stock_name}{days_ahead}.pkl'))
     rfc.fit(X_train, y_train)
     
     return rfc, rfc.predict(X_test), rfc.predict_proba(X_test)[:, 1]
@@ -286,7 +305,14 @@ def returns_plot(stock_name, stock_df, rfc_model, y_test):
             y_test, pandas series of target test data used to find number of test values
     Outputs: None, graph of model returns
     """
-    stock_df['prediction'] = rfc_model.predict(stock_df[['oc', 'hl', '21stdev_adj', '21sma_adj']])
+    stock_df['prediction'] = rfc_model.predict(stock_df[['oc'
+                                                         , 'hl'
+                                                         , '8stdev_adj'
+                                                         , '8sma_adj'
+                                                         , '13stdev_adj'
+                                                         , '13sma_adj'
+                                                         , '21stdev_adj'
+                                                         , '21sma_adj']])
     stock_df['returns'] = stock_df['adj'].shift(-1, fill_value = stock_df['adj'].median()) * stock_df['prediction']
     
     test_length = len(y_test)
@@ -307,7 +333,7 @@ def all_func(stock_name, start_date, days_ahead, model_name, days_back):
              print out of str sentence of model days ahead drediction, model return, and stock return   
     """
     
-    X_train, X_test, y_train, y_test, stock_df = data(stock_name, start_date, days_ahead)
+    X_train, X_test, y_train, y_test, stock_df, _ = data(stock_name, start_date, days_ahead)
     
     rfc_model, y_pred, y_probs = rfc(X_train, X_test, y_train, stock_name, days_ahead)
     
@@ -319,7 +345,14 @@ def all_func(stock_name, start_date, days_ahead, model_name, days_back):
     
     confusion_matrix(rfc_model, X_test, y_test, stock_name)
     
-    last = stock_df[['oc', 'hl', '21stdev_adj', '21sma_adj']].iloc[-days_back]
+    last = stock_df[['oc'
+                     , 'hl'
+                     , '8stdev_adj'
+                     , '8sma_adj'
+                     , '13stdev_adj'
+                     , '13sma_adj'
+                     , '21stdev_adj'
+                     , '21sma_adj']].iloc[-days_back]
     test_length = len(y_test)
     
     returns_on_ones = []
@@ -352,11 +385,18 @@ def pred_summary(stock_name, start_date, days_ahead, days_back):
              model_returns, float to 4 decimals of model returns multiple
              stock_returns, float to 4 decimials of stock return during test sample period
     """
-    X_train, X_test, y_train, y_test, stock_df = data(stock_name, start_date, days_ahead)
+    X_train, X_test, y_train, y_test, stock_df, current_price = data(stock_name, start_date, days_ahead)
     
     rfc_model, y_pred, y_probs = rfc(X_train, X_test, y_train, stock_name, days_ahead)
     
-    stock_df['prediction'] = rfc_model.predict(stock_df[['oc', 'hl', '21stdev_adj', '21sma_adj']])
+    stock_df['prediction'] = rfc_model.predict(stock_df[['oc'
+                                                         , 'hl'
+                                                         , '8stdev_adj'
+                                                         , '8sma_adj'
+                                                         , '13stdev_adj'
+                                                         , '13sma_adj'
+                                                         , '21stdev_adj'
+                                                         , '21sma_adj']])
     stock_df['returns'] = stock_df['adj'].shift(-1, fill_value = stock_df['adj'].median()) * stock_df['prediction']
     
     last = stock_df[['oc', 'hl', '21stdev_adj', '21sma_adj']].iloc[-days_back]
@@ -383,7 +423,7 @@ def pred_summary(stock_name, start_date, days_ahead, days_back):
         model_returns = round(returns, 4)
         stock_returns = round(stock_returns, 4)
 
-    return pred, model_returns, stock_returns
+    return pred, model_returns, stock_returns, current_price
 
 
 def pred_summary_df(start_dates, stocks, days_back):
@@ -401,6 +441,7 @@ def pred_summary_df(start_dates, stocks, days_back):
     preds5 = []
 
     for stock in stocks:
+        curent_price.append()
         for day in days_ahead:
             if day == 1:
                 preds1.append(pred_summary(stock
@@ -424,15 +465,17 @@ def pred_summary_df(start_dates, stocks, days_back):
                                           )
                             )
     df_dict = {'stock': stocks
+               , 'Current_Price': [x[3] for x in preds1]
                , '1_Day_Pred': [x[0] for x in preds1]
                , '1_Day_Model_Return': [x[1] for x in preds1]
                , '3_Day_Pred': [x[0] for x in preds3]
                , '3_Day_Model_Return': [x[1] for x in preds3]
                , '5_Day_Pred': [x[0] for x in preds5]
                , '5_Day_Model_Return': [x[1] for x in preds5]
+               , 'Actual_Returns': [x[2] for x in preds1]
               }
     pred_summary_df = pd.DataFrame(df_dict)
-    pred_summary_df['Actual_Returns'] = [x[2] for x in preds1]
+    # pred_summary_df['Actual_Returns'] = [x[2] for x in preds1] <-- check
     
     return pred_summary_df
 
