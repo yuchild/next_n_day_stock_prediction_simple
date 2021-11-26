@@ -134,11 +134,11 @@ def rfc_GridSearch(X_train, y_train, stock_name, days_ahead, cv):
     
     # make grid of hyperparameters
     grid={'bootstrap': [True, False]
-           , 'n_estimators': [5, 21, 35, 55, 89]
-           , 'max_depth': [2, 4, 6]
-           , 'max_features': [2, 4, 6]
-           , 'min_samples_leaf': [2, 4, 6]
-           , 'min_samples_split': [1, 3, 5]
+           , 'n_estimators': [13, 55, 89]
+           , 'max_depth': [2, 4, 7]
+           , 'max_features': [2, 5, 7]
+           , 'min_samples_leaf': [1, 2, 5]
+           , 'min_samples_split': [2, 3, 4]
           }
     
     # gridsearch with 5 fold cross validation
