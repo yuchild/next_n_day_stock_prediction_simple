@@ -62,17 +62,26 @@ def data(stock, start_date, days_ahead):
     # 8 day rolling average of close % change from pervious day
     stock_df['8sma_adj'] = stock_df.adj.rolling(8).mean()
     
+    # 8 day rolling average compaired to Close
+    stock_df['8sma_close'] = where(stock_df['Close'] >= stock_df['8sma_adj'], 1, -1)
+    
     # 13 day standard deviation of close % change from previous day 
     stock_df['13stdev_adj'] = stock_df.adj.rolling(13).std()
     
     # 13 day rolling average of close % change from pervious day
     stock_df['13sma_adj'] = stock_df.adj.rolling(13).mean()
+
+    # 13 day rolling average compaired to Close
+    stock_df['13sma_close'] = where(stock_df['Close'] >= stock_df['13sma_adj'], 1, -1)
     
     # 21 day standard deviation of close % change from previous day 
     stock_df['21stdev_adj'] = stock_df.adj.rolling(21).std()
     
     # 21 day rolling average of close % change from pervious day
     stock_df['21sma_adj'] = stock_df.adj.rolling(21).mean()
+
+    # 21 day rolling average compaired to Close
+    stock_df['21sma_close'] = where(stock_df['Close'] >= stock_df['21sma_adj'], 1, -1)
     
     # Direction
     stock_df['direction'] = where(stock_df['adj'].shift(-days_ahead) > stock_df['adj'], 1, -1)
@@ -102,14 +111,17 @@ def data(stock, start_date, days_ahead):
     
     # features
     features = ['oc'
-               , 'hl'
-               , '8stdev_adj'
-               , '8sma_adj'
-               , '13stdev_adj'
-               , '13sma_adj'
-               , '21stdev_adj'
-               , '21sma_adj'
-              ]
+                , 'hl'
+                , '8stdev_adj'
+                , '8sma_adj'
+                , '8sma_close'
+                , '13stdev_adj'
+                , '13sma_adj'
+                , '13sma_close'
+                , '21stdev_adj'
+                , '21sma_adj'
+                , '21sma_close'
+               ]
     
     # X_train, X_test, y_train, y_test
     X_train = train[features]
@@ -309,10 +321,16 @@ def returns_plot(stock_name, stock_df, rfc_model, y_test):
                                                          , 'hl'
                                                          , '8stdev_adj'
                                                          , '8sma_adj'
+                                                         , '8sma_close'
                                                          , '13stdev_adj'
                                                          , '13sma_adj'
+                                                         , '13sma_close'
                                                          , '21stdev_adj'
-                                                         , '21sma_adj']])
+                                                         , '21sma_adj'
+                                                         , '21sma_close'
+                                                        ]
+                                                       ]
+                                              )
     stock_df['returns'] = stock_df['adj'].shift(-1, fill_value = stock_df['adj'].median()) * stock_df['prediction']
     
     test_length = len(y_test)
@@ -349,10 +367,15 @@ def all_func(stock_name, start_date, days_ahead, model_name, days_back):
                      , 'hl'
                      , '8stdev_adj'
                      , '8sma_adj'
+                     , '8sma_close'
                      , '13stdev_adj'
                      , '13sma_adj'
+                     , '13sma_close'
                      , '21stdev_adj'
-                     , '21sma_adj']].iloc[-days_back]
+                     , '21sma_adj'
+                     , '21sma_close'
+                    ]
+                   ].iloc[-days_back]
     test_length = len(y_test)
     
     returns_on_ones = []
@@ -393,10 +416,15 @@ def pred_summary(stock_name, start_date, days_ahead, days_back):
                                                          , 'hl'
                                                          , '8stdev_adj'
                                                          , '8sma_adj'
+                                                         , '8sma_close'
                                                          , '13stdev_adj'
                                                          , '13sma_adj'
                                                          , '21stdev_adj'
-                                                         , '21sma_adj']])
+                                                         , '21sma_adj'
+                                                         , '21sma_close'
+                                                        ]
+                                                       ]
+                                              )
     stock_df['returns'] = stock_df['adj'].shift(-1, fill_value = stock_df['adj'].median()) * stock_df['prediction']
     
     last = stock_df[['oc', 'hl', '21stdev_adj', '21sma_adj']].iloc[-days_back]
