@@ -44,6 +44,10 @@ def data(stock, start_date, days_ahead):
     # download daily stock data from yahoo 
     stock_df = pd.read_pickle(f'./data/{stock}_df.pkl')
     
+    # create month and day of week columns
+    stock_df['month']  = stock_df.index.month
+    stock_df['dayofweek'] = stock_df.index.dayofweek
+    
     # some open values are 0.0, set it same as close value
     stock_df['Open'] = where(stock_df['Open'] == 0.0, stock_df['Close'], stock_df['Open'])
     
@@ -121,6 +125,8 @@ def data(stock, start_date, days_ahead):
                 , '21stdev_adj'
                 , '21sma_adj'
                 , '21sma_close'
+                , 'month'
+                , 'dayofweek'
                ]
     
     # X_train, X_test, y_train, y_test
@@ -146,8 +152,8 @@ def rfc_GridSearch(X_train, y_train, stock_name, days_ahead, cv):
     
     # make grid of hyperparameters
     grid={'bootstrap': [True, False]
-           , 'n_estimators': [13, 55, 89]
-           , 'max_depth': [2, 4, 7]
+           , 'n_estimators': [21, 35, 55]
+           , 'max_depth': [2, 5, 7]
            , 'max_features': [2, 5, 7]
            , 'min_samples_leaf': [1, 2, 5]
            , 'min_samples_split': [2, 3, 4]
@@ -328,6 +334,8 @@ def returns_plot(stock_name, stock_df, rfc_model, y_test):
                                                          , '21stdev_adj'
                                                          , '21sma_adj'
                                                          , '21sma_close'
+                                                         , 'month'
+                                                         , 'dayofweek'
                                                         ]
                                                        ]
                                               )
@@ -374,6 +382,8 @@ def all_func(stock_name, start_date, days_ahead, model_name, days_back):
                      , '21stdev_adj'
                      , '21sma_adj'
                      , '21sma_close'
+                     , 'month'
+                     , 'dayofweek'
                     ]
                    ].iloc[-days_back]
     test_length = len(y_test)
@@ -422,6 +432,8 @@ def pred_summary(stock_name, start_date, days_ahead, days_back):
                                                          , '21stdev_adj'
                                                          , '21sma_adj'
                                                          , '21sma_close'
+                                                         , 'month'
+                                                         , 'dayofweek'
                                                         ]
                                                        ]
                                               )
