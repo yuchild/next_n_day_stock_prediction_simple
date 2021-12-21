@@ -429,6 +429,7 @@ def pred_summary(stock_name, start_date, days_ahead, days_back):
                                                          , '8sma_close'
                                                          , '13stdev_adj'
                                                          , '13sma_adj'
+                                                         , '13sma_close'
                                                          , '21stdev_adj'
                                                          , '21sma_adj'
                                                          , '21sma_close'
@@ -439,7 +440,21 @@ def pred_summary(stock_name, start_date, days_ahead, days_back):
                                               )
     stock_df['returns'] = stock_df['adj'].shift(-1, fill_value = stock_df['adj'].median()) * stock_df['prediction']
     
-    last = stock_df[['oc', 'hl', '21stdev_adj', '21sma_adj']].iloc[-days_back]
+    last = stock_df[['oc'
+                     , 'hl'
+                     , '8stdev_adj'
+                     , '8sma_adj'
+                     , '8sma_close'
+                     , '13stdev_adj'
+                     , '13sma_adj'
+                     , '13sma_close'
+                     , '21stdev_adj'
+                     , '21sma_adj'
+                     , '21sma_close'
+                     , 'month'
+                     , 'dayofweek'
+                    ]
+                   ].iloc[-days_back]
     test_length = len(y_test)
     
     returns_on_ones = []
@@ -481,7 +496,6 @@ def pred_summary_df(start_dates, stocks, days_back):
     preds5 = []
 
     for stock in stocks:
-        curent_price.append()
         for day in days_ahead:
             if day == 1:
                 preds1.append(pred_summary(stock
