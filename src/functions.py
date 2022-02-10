@@ -87,6 +87,10 @@ def data(stock, start_date, days_ahead):
     # 21 day rolling average compaired to Close
     stock_df['21sma_close'] = where(stock_df['Close'] >= stock_df['21sma_adj'], 1, -1)
     
+    # slopes: n_days
+    def slope(x, y, n_days):
+        ...
+    
     # Direction
     stock_df['direction'] = where(stock_df['adj'].shift(-days_ahead) > stock_df['adj'], 1, -1)
     
