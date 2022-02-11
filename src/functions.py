@@ -88,17 +88,29 @@ def data(stock, start_date, days_ahead):
     stock_df['21sma_close'] = where(stock_df['Close'] >= stock_df['21sma_adj'], 1, -1)
     
     # slopes: n_days
-    def slope(x, y, n_days):
-        ...
+    stock_df['roll3'] = [x.to_list() for x in stock_df['Close'].rolling(window=3)]
+    stock_df['slope3'] = stock_df.iloc[2:].apply(lambda x: np.polyfit([-1, 0, 1], x.roll3, 1)[0], axis=1)
+
+    stock_df['roll5'] = [x.to_list() for x in stock_df['Close'].rolling(window=5)]
+    stock_df['slope5'] = stock_df.iloc[4:].apply(lambda x: np.polyfit([-2, -1, 0, 1, 2], x.roll5, 1)[0], axis=1)
     
-    # Direction
+    stock_df['roll9'] = [x.to_list() for x in stock_df['Close'].rolling(window=9)]
+    stock_df['slope9'] = stock_df.iloc[8:].apply(lambda x: np.polyfit([-4, -3, -2, -1, 0, 1, 2, 3, 4], x.roll9, 1)[0], axis=1)
+
+    stock_df['roll13'] = [x.to_list() for x in stock_df['Close'].rolling(window=13)]
+    stock_df['slope13'] = stock_df.iloc[12:].apply(lambda x: np.polyfit([-6, -5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 6], x.roll13, 1)[0], axis=1)
+
+    stock_df['roll21'] = [x.to_list() for x in stock_df['Close'].rolling(window=21)]
+    stock_df['slope21'] = stock_df.iloc[20:].apply(lambda x: np.polyfit([-10, -9, -8, -7, -6, -4, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10], x.roll21,  1)[0], axis=1)
+    
+    # Direction, days_ahead means prediting days ahead of current date
     stock_df['direction'] = where(stock_df['adj'].shift(-days_ahead) > stock_df['adj'], 1, -1)
     
     # drop nulls
     stock_df.dropna(axis=0, inplace=True)    
     
     # split stock_df to train test dataframes
-    split = int(stock_df.shape[0] * 0.85)
+    split = int(stock_df.shape[0] * 0.89)
     train = stock_df[:split]
     test = stock_df[split:]
     
@@ -129,6 +141,11 @@ def data(stock, start_date, days_ahead):
                 , '21stdev_adj'
                 , '21sma_adj'
                 , '21sma_close'
+                , 'slope3'
+                , 'slope5'
+                , 'slope9'
+                , 'slope13'
+                , 'slope21'
                 , 'month'
                 , 'dayofweek'
                ]
@@ -156,11 +173,11 @@ def rfc_GridSearch(X_train, y_train, stock_name, days_ahead, cv):
     
     # make grid of hyperparameters
     grid={'bootstrap': [True, False]
-           , 'n_estimators': [21, 35, 55]
-           , 'max_depth': [2, 5, 7]
-           , 'max_features': [2, 5, 7]
-           , 'min_samples_leaf': [1, 2, 5]
-           , 'min_samples_split': [2, 3, 4]
+           , 'n_estimators': [35, 55, 89]
+           , 'max_depth': [2, 5, 13]
+           , 'max_features': [2, 5, 13]
+           , 'min_samples_leaf': [2, 3, 5]
+           , 'min_samples_split': [1, 3, 5]
           }
     
     # gridsearch with 5 fold cross validation
@@ -338,6 +355,11 @@ def returns_plot(stock_name, stock_df, rfc_model, y_test):
                                                          , '21stdev_adj'
                                                          , '21sma_adj'
                                                          , '21sma_close'
+                                                         , 'slope3'
+                                                         , 'slope5'
+                                                         , 'slope9'
+                                                         , 'slope13'
+                                                         , 'slope21'
                                                          , 'month'
                                                          , 'dayofweek'
                                                         ]
@@ -386,6 +408,11 @@ def all_func(stock_name, start_date, days_ahead, model_name, days_back):
                      , '21stdev_adj'
                      , '21sma_adj'
                      , '21sma_close'
+                     , 'slope3'
+                     , 'slope5'
+                     , 'slope9'
+                     , 'slope13'
+                     , 'slope21'
                      , 'month'
                      , 'dayofweek'
                     ]
@@ -437,6 +464,11 @@ def pred_summary(stock_name, start_date, days_ahead, days_back):
                                                          , '21stdev_adj'
                                                          , '21sma_adj'
                                                          , '21sma_close'
+                                                         , 'slope3'
+                                                         , 'slope5'
+                                                         , 'slope9'
+                                                         , 'slope13'
+                                                         , 'slope21'
                                                          , 'month'
                                                          , 'dayofweek'
                                                         ]
@@ -455,6 +487,11 @@ def pred_summary(stock_name, start_date, days_ahead, days_back):
                      , '21stdev_adj'
                      , '21sma_adj'
                      , '21sma_close'
+                     , 'slope3'
+                     , 'slope5'
+                     , 'slope9'
+                     , 'slope13'
+                     , 'slope21'
                      , 'month'
                      , 'dayofweek'
                     ]
