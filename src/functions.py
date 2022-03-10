@@ -27,6 +27,40 @@ from sklearn.metrics import (roc_auc_score
 from sklearn.utils import resample
 from sklearn.model_selection import cross_val_score
 
+# global variables
+# features
+features = ['oc'
+            , 'hl'
+            , '8stdev_vol'
+            , '8stdev_adj'
+            , '8sma_adj'
+            , '8sma_close'
+            , ''
+            , '13stdev_adj'
+            , '13sma_adj'
+            , '13sma_close'
+            , '21stdev_adj'
+            , '21sma_adj'
+            , '21sma_close'
+            , 'slope3'
+            , '8sma_slope3'
+            , '8stdev_slope3'
+            , 'slope5'
+            , '8sma_slope5'
+            , '8stdev_slope5'
+            , 'slope9'
+            , '5sma_slope9'
+            , '5stdev_slope9'
+            , 'slope13'
+            , '3sma_slope13'
+            , '3stdev_slope13'
+            , 'slope21'
+            , '3sma_slope21'
+            , '3stdev_slope21'
+            , 'month'
+            , 'dayofweek'
+           ]
+
 def get_tables(start_dates):
     for x in start_dates:
         stock = yf.Ticker(x.upper())
@@ -60,8 +94,11 @@ def data(stock, start_date, days_ahead):
     # *adjusted close % change from previous day, *adjusted not available as of 2021-07-10
     stock_df['adj'] = stock_df['Close'].pct_change()
 
+    # 8 day standard deviation of stock trade volume
+    stock_df['8stdev_vol'] = stock_df.Volume.rolling(8).std(ddof=0)
+    
     # 8 day standard deviation of close % change from previous day 
-    stock_df['8stdev_adj'] = stock_df.adj.rolling(8).std()
+    stock_df['8stdev_adj'] = stock_df.adj.rolling(8).std(ddof=0)
     
     # 8 day rolling average of close % change from pervious day
     stock_df['8sma_adj'] = stock_df.adj.rolling(8).mean()
@@ -70,7 +107,7 @@ def data(stock, start_date, days_ahead):
     stock_df['8sma_close'] = where(stock_df['Close'] >= stock_df['8sma_adj'], 1, -1)
     
     # 13 day standard deviation of close % change from previous day 
-    stock_df['13stdev_adj'] = stock_df.adj.rolling(13).std()
+    stock_df['13stdev_adj'] = stock_df.adj.rolling(13).std(ddof=0)
     
     # 13 day rolling average of close % change from pervious day
     stock_df['13sma_adj'] = stock_df.adj.rolling(13).mean()
@@ -79,7 +116,7 @@ def data(stock, start_date, days_ahead):
     stock_df['13sma_close'] = where(stock_df['Close'] >= stock_df['13sma_adj'], 1, -1)
     
     # 21 day standard deviation of close % change from previous day 
-    stock_df['21stdev_adj'] = stock_df.adj.rolling(21).std()
+    stock_df['21stdev_adj'] = stock_df.adj.rolling(21).std(ddof=0)
     
     # 21 day rolling average of close % change from pervious day
     stock_df['21sma_adj'] = stock_df.adj.rolling(21).mean()
@@ -90,18 +127,28 @@ def data(stock, start_date, days_ahead):
     # slopes: n_days
     stock_df['roll3'] = [x.to_list() for x in stock_df['Close'].rolling(window=3)]
     stock_df['slope3'] = stock_df.iloc[2:].apply(lambda x: np.polyfit([-1, 0, 1], x.roll3, 1)[0], axis=1)
+    stock_df['8sma_slope3'] = stock_df.slope3.rolling(8).mean()
+    stock_df['8stdev_slope3'] = stock_df.slope3.rolling(8).std(ddof=0)
 
     stock_df['roll5'] = [x.to_list() for x in stock_df['Close'].rolling(window=5)]
     stock_df['slope5'] = stock_df.iloc[4:].apply(lambda x: np.polyfit([-2, -1, 0, 1, 2], x.roll5, 1)[0], axis=1)
+    stock_df['8sma_slope5'] = stock_df.slope5.rolling(8).mean()
+    stock_df['8stdev_slope5'] = stock_df.slope5.rolling(8).std(ddof=0)
     
     stock_df['roll9'] = [x.to_list() for x in stock_df['Close'].rolling(window=9)]
     stock_df['slope9'] = stock_df.iloc[8:].apply(lambda x: np.polyfit([-4, -3, -2, -1, 0, 1, 2, 3, 4], x.roll9, 1)[0], axis=1)
-
+    stock_df['5sma_slope9'] = stock_df.slope9.rolling(5).mean()
+    stock_df['5stdev_slope9'] = stock_df.slope9.rolling(5).std(ddof=0)    
+    
     stock_df['roll13'] = [x.to_list() for x in stock_df['Close'].rolling(window=13)]
     stock_df['slope13'] = stock_df.iloc[12:].apply(lambda x: np.polyfit([-6, -5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 6], x.roll13, 1)[0], axis=1)
+    stock_df['3sma_slope13'] = stock_df.slope13.rolling(3).mean()
+    stock_df['3stdev_slope13'] = stock_df.slope13.rolling(3).std(ddof=0)
 
     stock_df['roll21'] = [x.to_list() for x in stock_df['Close'].rolling(window=21)]
     stock_df['slope21'] = stock_df.iloc[20:].apply(lambda x: np.polyfit([-10, -9, -8, -7, -6, -4, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10], x.roll21,  1)[0], axis=1)
+    stock_df['3sma_slope21'] = stock_df.slope21.rolling(3).mean()
+    stock_df['3stdev_slope21'] = stock_df.slope21.rolling(3).std(ddof=0)
     
     # Direction, days_ahead means prediting days ahead of current date
     stock_df['direction'] = where(stock_df['adj'].shift(-days_ahead) > stock_df['adj'], 1, -1)
@@ -130,25 +177,25 @@ def data(stock, start_date, days_ahead):
     train = train_upsampled.sample(frac=1).reset_index(drop=True)
     
     # features
-    features = ['oc'
-                , 'hl'
-                , '8stdev_adj'
-                , '8sma_adj'
-                , '8sma_close'
-                , '13stdev_adj'
-                , '13sma_adj'
-                , '13sma_close'
-                , '21stdev_adj'
-                , '21sma_adj'
-                , '21sma_close'
-                , 'slope3'
-                , 'slope5'
-                , 'slope9'
-                , 'slope13'
-                , 'slope21'
-                , 'month'
-                , 'dayofweek'
-               ]
+    #     features = ['oc'
+    #                 , 'hl'
+    #                 , '8stdev_adj'
+    #                 , '8sma_adj'
+    #                 , '8sma_close'
+    #                 , '13stdev_adj'
+    #                 , '13sma_adj'
+    #                 , '13sma_close'
+    #                 , '21stdev_adj'
+    #                 , '21sma_adj'
+    #                 , '21sma_close'
+    #                 , 'slope3'
+    #                 , 'slope5'
+    #                 , 'slope9'
+    #                 , 'slope13'
+    #                 , 'slope21'
+    #                 , 'month'
+    #                 , 'dayofweek'
+    #                ]
     
     # X_train, X_test, y_train, y_test
     X_train = train[features]
@@ -174,8 +221,8 @@ def rfc_GridSearch(X_train, y_train, stock_name, days_ahead, cv):
     # make grid of hyperparameters
     grid={'bootstrap': [True, False]
            , 'n_estimators': [35, 55, 89]
-           , 'max_depth': [2, 5, 13]
-           , 'max_features': [2, 5, 13]
+           , 'max_depth': [3, 5, 9]
+           , 'max_features': [5, 8, 13, 21]
            , 'min_samples_leaf': [2, 3, 5]
            , 'min_samples_split': [1, 3, 5]
           }
@@ -344,27 +391,7 @@ def returns_plot(stock_name, stock_df, rfc_model, y_test):
             y_test, pandas series of target test data used to find number of test values
     Outputs: None, graph of model returns
     """
-    stock_df['prediction'] = rfc_model.predict(stock_df[['oc'
-                                                         , 'hl'
-                                                         , '8stdev_adj'
-                                                         , '8sma_adj'
-                                                         , '8sma_close'
-                                                         , '13stdev_adj'
-                                                         , '13sma_adj'
-                                                         , '13sma_close'
-                                                         , '21stdev_adj'
-                                                         , '21sma_adj'
-                                                         , '21sma_close'
-                                                         , 'slope3'
-                                                         , 'slope5'
-                                                         , 'slope9'
-                                                         , 'slope13'
-                                                         , 'slope21'
-                                                         , 'month'
-                                                         , 'dayofweek'
-                                                        ]
-                                                       ]
-                                              )
+    stock_df['prediction'] = rfc_model.predict(stock_df[features])
     stock_df['returns'] = stock_df['adj'].shift(-1, fill_value = stock_df['adj'].median()) * stock_df['prediction']
     
     test_length = len(y_test)
@@ -397,26 +424,7 @@ def all_func(stock_name, start_date, days_ahead, model_name, days_back):
     
     confusion_matrix(rfc_model, X_test, y_test, stock_name)
     
-    last = stock_df[['oc'
-                     , 'hl'
-                     , '8stdev_adj'
-                     , '8sma_adj'
-                     , '8sma_close'
-                     , '13stdev_adj'
-                     , '13sma_adj'
-                     , '13sma_close'
-                     , '21stdev_adj'
-                     , '21sma_adj'
-                     , '21sma_close'
-                     , 'slope3'
-                     , 'slope5'
-                     , 'slope9'
-                     , 'slope13'
-                     , 'slope21'
-                     , 'month'
-                     , 'dayofweek'
-                    ]
-                   ].iloc[-days_back]
+    last = stock_df[features].iloc[-days_back]
     test_length = len(y_test)
     
     returns_on_ones = []
@@ -453,49 +461,10 @@ def pred_summary(stock_name, start_date, days_ahead, days_back):
     
     rfc_model, y_pred, y_probs = rfc(X_train, X_test, y_train, stock_name, days_ahead)
     
-    stock_df['prediction'] = rfc_model.predict(stock_df[['oc'
-                                                         , 'hl'
-                                                         , '8stdev_adj'
-                                                         , '8sma_adj'
-                                                         , '8sma_close'
-                                                         , '13stdev_adj'
-                                                         , '13sma_adj'
-                                                         , '13sma_close'
-                                                         , '21stdev_adj'
-                                                         , '21sma_adj'
-                                                         , '21sma_close'
-                                                         , 'slope3'
-                                                         , 'slope5'
-                                                         , 'slope9'
-                                                         , 'slope13'
-                                                         , 'slope21'
-                                                         , 'month'
-                                                         , 'dayofweek'
-                                                        ]
-                                                       ]
-                                              )
+    stock_df['prediction'] = rfc_model.predict(stock_df[features])
     stock_df['returns'] = stock_df['adj'].shift(-1, fill_value = stock_df['adj'].median()) * stock_df['prediction']
     
-    last = stock_df[['oc'
-                     , 'hl'
-                     , '8stdev_adj'
-                     , '8sma_adj'
-                     , '8sma_close'
-                     , '13stdev_adj'
-                     , '13sma_adj'
-                     , '13sma_close'
-                     , '21stdev_adj'
-                     , '21sma_adj'
-                     , '21sma_close'
-                     , 'slope3'
-                     , 'slope5'
-                     , 'slope9'
-                     , 'slope13'
-                     , 'slope21'
-                     , 'month'
-                     , 'dayofweek'
-                    ]
-                   ].iloc[-days_back]
+    last = stock_df[features].iloc[-days_back]
     test_length = len(y_test)
     
     returns_on_ones = []
